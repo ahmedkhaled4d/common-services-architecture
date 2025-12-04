@@ -1,0 +1,95 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    restart: always
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - wordpress_site1
+      - wordpress_site2
+    networks:
+      - webnet
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h; done'"
+    networks:
+      - webnet
+
+  # -------------------------
+  # WordPress Site 1
+  # -------------------------
+  db_site1:
+    image: mariadb:10.6
+    container_name: db_site1
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: wp1
+      MYSQL_USER: wp1_user
+      MYSQL_PASSWORD: wp1_pass
+    volumes:
+      - ./data/site1/db:/var/lib/mysql
+    networks:
+      - webnet
+
+  wordpress_site1:
+    image: wordpress:latest
+    container_name: wp_site1
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db_site1
+      WORDPRESS_DB_USER: wp1_user
+      WORDPRESS_DB_PASSWORD: wp1_pass
+      WORDPRESS_DB_NAME: wp1
+    volumes:
+      - ./data/site1/wp:/var/www/html
+    networks:
+      - webnet
+
+  # -------------------------
+  # WordPress Site 2
+  # -------------------------
+  db_site2:
+    image: mariadb:10.6
+    container_name: db_site2
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: wp2
+      MYSQL_USER: wp2_user
+      MYSQL_PASSWORD: wp2_pass
+    volumes:
+      - ./data/site2/db:/var/lib/mysql
+    networks:
+      - webnet
+
+  wordpress_site2:
+    image: wordpress:latest
+    container_name: wp_site2
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db_site2
+      WORDPRESS_DB_USER: wp2_user
+      WORDPRESS_DB_PASSWORD: wp2_pass
+      WORDPRESS_DB_NAME: wp2
+    volumes:
+      - ./data/site2/wp:/var/www/html
+    networks:
+      - webnet
+
+networks:
+  webnet:
+    driver: bridge
